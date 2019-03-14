@@ -8,7 +8,7 @@
 
 // External view of DateTime
 
-typedef struct DateTimeRep *DateTime;
+typedef struct DateTimeRep* DateTime;
 
 // create new timestamp object
 DateTime newDateTime (void);

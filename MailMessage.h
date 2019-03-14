@@ -11,7 +11,7 @@
 
 // External view of MailMessage
 
-typedef struct MailMessageRep *MailMessage;
+typedef struct MailMessageRep* MailMessage;
 
 // create new Mail Message object
 MailMessage newMailMessage (void);

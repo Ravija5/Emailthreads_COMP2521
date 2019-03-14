@@ -8,6 +8,8 @@
 #include "MMList.h"
 #include "MailMessage.h"
 
+
+
 int main (int argc, char *argv[])
 {
 	// Process command line args
@@ -24,7 +26,10 @@ int main (int argc, char *argv[])
 	MMList msgList = newMMList ();      // list of all messages read
 	MailMessage msg;                    // current mail message
 	while ((msg = getMailMessage (in)) != NULL) {
+		
+		//printf("INSERTING\n");
 		MMListInsert (msgList, msg);
+		//showMMList(msgList);
 	}
 
 	printf ("\n=== List ===\n");

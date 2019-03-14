@@ -14,7 +14,7 @@
 
 // data structures representing MMList
 
-typedef struct MMListNode *Link;
+typedef struct MMListNode* Link;
 
 typedef struct MMListNode {
 	MailMessage data; // message associated with this list item
@@ -28,6 +28,10 @@ typedef struct MMListRep {
 } MMListRep;
 
 static Link newMMListNode (MailMessage mesg);
+
+//Helper functions for Inserting into MMList
+static void MMListInsertBefore(MMList L, Link curr, Link n);
+static void MMListInsertAfter(MMList L, Link curr, Link n);
 
 // create a new empty MMList
 MMList newMMList (void)
@@ -60,6 +64,28 @@ void showMMList (MMList L)
 		showMailMessage (curr->data, 0);
 }
 
+//the only time MMListInsertBefore is called is inserting before first element in the list
+static void MMListInsertBefore(MMList L, Link curr, Link n){
+	//inserting before the first element
+	n->next = L->first;
+	L->first = n;
+}
+
+static void MMListInsertAfter(MMList L, Link curr, Link n){
+	if(L->curr == L->last){
+		//inserting after the last element 
+		L->curr->next = n;
+		L->last = n;
+		n->next = NULL;
+	}else{
+		//inserting in the middle
+		//printf("Inserting in the middle\n");
+		n->next = curr->next;
+		curr->next = n;
+		
+	}
+}
+
 // insert mail message in order
 // ordering based on MailMessageDateTime
 void MMListInsert (MMList L, MailMessage mesg)
@@ -69,8 +95,45 @@ void MMListInsert (MMList L, MailMessage mesg)
 
 	assert (mesg != NULL);
 
-	// You need to change the following and
-	// implement this function
+	//Create a new node
+	Link newLink = newMMListNode(mesg);
+
+	if(L->first == NULL){
+		//empty list
+		L->first = L->last = newLink;
+		newLink->next = NULL;
+		return;
+	}
+
+	//Getting Timestamps
+	DateTime firstDate =  MailMessageDateTime(L->first->data);
+	DateTime lastDate =  MailMessageDateTime(L->last->data);
+	DateTime newNodeDate = MailMessageDateTime(mesg);
+
+	if(DateTimeBefore(newNodeDate, firstDate)){
+		//insert newLink at the beginning
+		//printf("Inserting newLink at the beginning\n");
+		MMListInsertBefore(L,L->first, newLink);
+	}else if(DateTimeAfter(newNodeDate, lastDate)){
+		//insert newLink at the end
+		//printf("Inserting newLink at the end\n");
+		L->curr = L->last;
+		MMListInsertAfter(L,L->last, newLink);
+	}else{
+		//insertion in the middle
+		//inserts before the old msg if timestamps are same
+		//printf("Inserting newLink in the middle\n");
+		L->curr = L->first;
+		DateTime currNextDate = MailMessageDateTime(L->curr->next->data);
+
+		while(L->curr != NULL && L->curr->next != NULL && DateTimeAfter(newNodeDate,currNextDate)){
+			L->curr = L->curr->next;
+			currNextDate = MailMessageDateTime(L->curr->next->data);
+		}	
+		//insert after curr
+	
+		MMListInsertAfter(L,L->curr, newLink);
+	}
 }
 
 // create a new MMListNode for mail message
