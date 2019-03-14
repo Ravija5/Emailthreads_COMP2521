@@ -12,9 +12,12 @@
 #include "MMTree.h"
 #include "MailMessage.h"
 
-// data structures representing MMTree
 
+// data structures representing MMTree
 typedef struct MMTNode *Link;
+
+//Helper function for Inserting in MMTree
+static Link MMTreeInsertRecursive(Link l,char *id, MailMessage msg);
 
 typedef struct MMTNode {
 	char *msgid;		 // unique ID for message
@@ -93,13 +96,41 @@ static MailMessage doMMTreeFind (Link t, char *id)
 		return t->message;
 }
 
+//Helper function for MMTreeInsert
+static Link MMTreeInsertRecursive(Link l, char* id, MailMessage mesg){
+	if(l == NULL){
+		//create new node
+		Link newNode = newMMTNode(id,mesg); 
+		return newNode;
+	}
+	if(strcmp(l->msgid, id) < 0){
+		l->right = MMTreeInsertRecursive(l->right,id,mesg);
+	}else{
+		l->left = MMTreeInsertRecursive(l->left,id, mesg);
+	}
+	return l;
+}
+
 // insert a new message into a MMTree
 // message is indexed by a string ID
 MMTree MMTreeInsert (MMTree t, char *id, MailMessage mesg)
 {
-	// You need to implement this
+	if(t->root == NULL){
+		//tree is empty
+		//Create node
+		Link newNode = newMMTNode(id,mesg);
+		t->root = newNode;
+		return t;
+	}
+	
+	if( strcmp(t->root->msgid, id) < 0 ){
+		//id is bigger than curr link
+		t->root->right = MMTreeInsertRecursive(t->root->right,id, mesg);
+	}else{
+		t->root->left = MMTreeInsertRecursive(t->root->left,id, mesg);
+	}
 
-	return NULL;
+	return t;
 }
 
 // make a new node containing a value
