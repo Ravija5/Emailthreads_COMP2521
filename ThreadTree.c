@@ -15,10 +15,10 @@
 #include "MailMessage.h"
 #include "ThreadTree.h"
 
-//Queue structs
 typedef struct QueueRep *Queue;
 typedef struct ThreadTreeNode *Link;
 
+//Queue Structs 
 typedef struct QueueNode {
 	Link value;
 	struct QueueNode *next;
@@ -30,10 +30,7 @@ typedef struct QueueRep {
 } QueueRep;
 
 
-// Representation of ThreadTree's
-
-
-
+// ThreadTree Structs
 typedef struct ThreadTreeNode {
 	MailMessage mesg;
 	Link next, replies;
@@ -44,25 +41,29 @@ typedef struct ThreadTreeRep {
 } ThreadTreeRep;
 
 // Auxiliary data structures and functions
-
 // Add any new data structures and functions here ...
 
-// create new empty queue
+//Queue prototypes
 static Queue newQueue (void);
-// free memory used by queue
 static void dropQueue (Queue);
-// add item on queue
 static void QueueJoin (Queue, Link);
-// remove item from queue
 static Link QueueLeave (Queue);
-// check for no items
 static bool QueueIsEmpty (Queue);
 
-
+//ThreadTree prototypes
 static void doDropThreadTree (Link t);
 static void doShowThreadTree (Link t, int level);
+static Link newTTNode(MailMessage message);
+static void insertThreadTree(Link root, Link newNode);
+static void insertAfterReplies(Link start, Link newNode);
+static void insertAfterNext(Link start, Link newNode);
+static bool isReplyIDNull(Link link);
+static bool isMessageIDNull(Link link);
+static bool isMessageAndReplyIDEqual(Link n1, Link n2);
+
 
 // END auxiliary data structures and functions
+
 
 // create a new empty ThreadTree
 ThreadTree newThreadTree (void)
@@ -119,8 +120,14 @@ static Link newTTNode(MailMessage message){
 	return new;
 }
 
-//function to insert a node at last position free in the List
+
+/*
+Function to add a Link to the end of a list
+Link start: root of the list
+Link newNode: node to be inserted in list
+*/
 static void insertAfterNext(Link start, Link newNode){
+	
 	while(start->next != NULL){
 		start = start->next;
 	}
@@ -128,9 +135,12 @@ static void insertAfterNext(Link start, Link newNode){
 }
 
 
-//function to insert a node at last position free in the List
+/*
+Function to add a Link to the end of it's Replies list
+Link start: root of the list
+Link newNode: node to be inserted in list
+*/
 static void insertAfterReplies(Link start, Link newNode){
-	//printf("inserting after reply ID Function\n");
 	if(start->replies == NULL){
 		start->replies = newNode;
 	}else{
@@ -138,44 +148,70 @@ static void insertAfterReplies(Link start, Link newNode){
 	}
 }
 
-//function to check if a given reply ID exists in the tree
-static int findReplyID(MMTree tree, MailMessage mesg){
-	//Traverse through tree and check if any node has the same mesgid as mesg->replyID
-	if(MMTreeFind(tree, MailMessageRepliesTo(mesg)) == NULL){
-		//false
-		return 0;
+//Function to check if a given Link has a replyID == NULL
+static bool isReplyIDNull(Link link){
+	if ( MailMessageRepliesTo(link->mesg) == NULL){
+		return true;
 	}else{
-		return 1;
+		return false;
 	}
-
 }
 
+//Function to check if a given Link has a messageID == NULL
+static bool isMessageIDNull(Link link){
+	if ( MailMessageID(link->mesg) == NULL){
+		return true;
+	}else{
+		return false;
+	}
+}
 
-static void insertThreadTree(Link curr, Link newNode){
+//Function to check if two given Links have the same reply ID
+static bool isReplyIDEqual(Link n1, Link n2){
+	//NOTE: strcmp does not take null as a valid argument
+	if ( !isReplyIDNull(n1) && !isReplyIDNull(n2) &&
+			strcmp( MailMessageRepliesTo(n1->mesg), MailMessageRepliesTo(n2->mesg)) == 0 ){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+//Function to compare the messageID of Link n1 with replyID of Link n2
+static bool isMessageAndReplyIDEqual(Link n1, Link n2){
+	//NOTE: strcmp does not take null as a valid argument
+	if ( !isMessageIDNull(n1) && !isReplyIDNull(n2) &&
+			strcmp( MailMessageID(n1->mesg), MailMessageRepliesTo(n2->mesg)) == 0 ){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+/*
+Function to insert a given Link to a ThreadTree
+Link root: the root of the ThreadTree
+Link newNode: the node to be inserted into ThreadTree
+*/
+static void insertThreadTree(Link root, Link newNode){
 	Queue q = newQueue();
 
-	//Adding root
-	QueueJoin(q, curr);
+	QueueJoin(q, root);
 
-	while(!QueueIsEmpty(q)){
+	while( !QueueIsEmpty(q) ){
+
 		Link node = QueueLeave(q);
-		//printf("Node removed = %s\n ", MailMessageID(node->mesg));
-		//printf("NewNode = %s\n", MailMessageID(newNode->mesg));
-		//processing node
-		if ( (MailMessageRepliesTo(node->mesg) == NULL && MailMessageRepliesTo(newNode->mesg) == NULL) ||
-				( MailMessageRepliesTo(node->mesg) != NULL && MailMessageRepliesTo(newNode->mesg) != NULL &&
-				strcmp( MailMessageRepliesTo(node->mesg), MailMessageRepliesTo(newNode->mesg)) == 0)  ) {
-			//printf("Replies ID's match\n");
+		
+		//Processing node 
+		if ( (isReplyIDNull(node) && isReplyIDNull(newNode)) || isReplyIDEqual(node, newNode) ) {
+			//Replies ID's of node and newNode match
 			insertAfterNext(node, newNode);
 			break;
-		}else if((MailMessageID(node->mesg) == NULL && MailMessageRepliesTo(newNode->mesg) == NULL) ||
-				( MailMessageID(node->mesg) != NULL && MailMessageRepliesTo(newNode->mesg) != NULL &&
-				strcmp( MailMessageID(node->mesg), MailMessageRepliesTo(newNode->mesg) ) == 0) ){
-			//printf("MailId of curr and reply id of newNode match\n");
+		}else if( (isMessageIDNull(node) && isMessageIDNull(newNode)) || isMessageAndReplyIDEqual(node, newNode) ){
+			//MailID of node and replyID of newNode match
 			insertAfterReplies(node, newNode);
 			break;
 		}
-
 		
 		if(node->replies != NULL){
 			QueueJoin(q, node->replies);
@@ -183,14 +219,10 @@ static void insertThreadTree(Link curr, Link newNode){
 		if(node->next != NULL){
 			QueueJoin(q, node->next);
 		}
-
 	}
-
 	dropQueue(q);
-
 }
 
-//static ThreadTree ThreadTreeInsert(ThreadTree tt, MMList mesgs, MMTree msgids,  )
 // insert mail message into ThreadTree
 // if a reply, insert in appropriate replies list
 // whichever list inserted, must be in timestamp-order
@@ -208,59 +240,31 @@ ThreadTree ThreadTreeBuild (MMList mesgs, MMTree msgids)
 
 	if(tt->messages == NULL){
 		//Thread tree is empty
-		//printf("Inserted in empty Thread Tree\n");
 		tt->messages = newNode;
 	}
 
-
+	//Setting curr as the root of ThreadTree
 	Link curr = NULL;
 	if(tt->messages != NULL){
 		curr = tt->messages;
-		//printf("Curr value %s\n",MailMessageID(curr->mesg));
 	}
 	 
 	//Iterating through the MMList
 	while((lNode = MMListNext (mesgs)) != NULL){
-	
-		//printf("LNode value = %s\n", MailMessageID(lNode));
-
-		//create a new node to be inserted
+		
+		//create a new threadtree node to be inserted
 		newNode = newTTNode(lNode);
 
-		//Reset curr 
+		//Reset curr after each iteration
 		curr = tt->messages;
-		//printf("Curr value = %s\n", MailMessageID(curr->mesg));
 		insertThreadTree(curr, newNode);
-		//showThreadTree(tt);
-		// if ( strcmp( MailMessageID(newNode->mesg), MailMessageID(curr->mesg) ) == 0 ) {
-		// 	printf("Replies ID's match\n");
-		// 	insertAfterNext(curr, newNode);
-		// 	showThreadTree(tt);
-		// }else if(strcmp( MailMessageID(curr->mesg), MailMessageRepliesTo(newNode->mesg) ) == 0){
-		// 	printf("MailId of curr and reply id of newNode match\n");
-		// 	insertAfterReplies(curr, newNode);
-		// 	showThreadTree(tt);
-		// }else if( MailMessageID(lNode) == NULL || (findReplyID(msgids,lNode) == 0 ) ){
-		// 	//Insert at top level
-		// 	printf("Didnt find reply ID at all\n");
-		// 	insertAfterNext(curr, newNode);
-		// }else{
-		// 	printf("Inserting via Queue\n");
-		// 	insertThreadTree(curr, newNode);
-		// 	showThreadTree(tt);
-
-		// }
 	}
-	
 	return tt; 
 }
 
 
 
-
-
-//Queue Functions
-
+// Implementations of Queue Functions
 
 // create new empty Queue
 static Queue newQueue (void)
